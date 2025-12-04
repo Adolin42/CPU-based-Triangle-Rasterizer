@@ -1,0 +1,20 @@
+# Compiled executables
+*.exe
+
+# Object files
+*.o
+
+# SDL3 library folder (too large for git)
+SDL3-3.2.26/
+
+# SDL3 DLL (can be downloaded separately)
+SDL3.dll
+
+# Visual Studio Code settings (optional)
+.vscode/
+
+# Windows thumbnail cache
+Thumbs.db
+
+# macOS files
+.DS_Store

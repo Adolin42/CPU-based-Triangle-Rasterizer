@@ -18,3 +18,7 @@ Thumbs.db
 
 # macOS files
 .DS_Store
+
+# screenshots
+*.png
+*.jpeg

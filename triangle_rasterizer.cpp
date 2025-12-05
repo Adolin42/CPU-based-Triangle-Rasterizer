@@ -433,7 +433,7 @@ int main() {
         cout << "\n\nHow many triangles would you like to render? ";
         cin >> numTriangles;
 
-        cout << "NOTE: The window has valid coordinates between (0, 0) and (499, 499).\n";
+        cout << "\n\nNOTE: The window has valid coordinates between (0, 0) and (499, 499).\n";
         cout << "(0, 0) is the top-left most pixel.\n";
         cout << "You can draw vertices outside of these bounds, see what happens!\n\n";
 

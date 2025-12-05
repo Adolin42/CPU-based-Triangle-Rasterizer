@@ -414,9 +414,9 @@ int main() {
 
     // Ask user if they want to add their own triangles, or use defaults
     int customTriangles = 0;
-    cout << "Enter (1): Render default triangles\n";
+    cout << "Default Mode (1): Render default triangles\n";
     cout << "OR\n";
-    cout << "Enter (2): Draw your own!\n";
+    cout << "Custom Mode (2): Draw your own!\n";
     cout << "If you fail to enter either (1) or (2), there will be consequences.\n";
 
     cin >> customTriangles;

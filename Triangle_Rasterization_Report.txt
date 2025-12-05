@@ -1,0 +1,156 @@
+Triangle Rasterization Using the Scanline Algorithm
+===================================================
+
+Introduction
+------------
+This project implements a CPU-based triangle rasterizer using the scanline algorithm. The goal is to take three vertices (each with x, y coordinates and a color) and fill in all the pixels that lie within the triangle, with smooth color gradients between vertices. This is the fundamental operation used in all 3D graphics rendering - every surface you see in a video game or 3D application is ultimately broken down into triangles and rasterized to the screen.
+
+
+The Overall Approach
+-------------------
+The rasterization process happens in several stages:
+
+1. Sort the three vertices by their Y coordinate (top to bottom)
+2. Draw the edges of the triangle using Bresenham's line algorithm
+3. Use the scanline algorithm to fill the interior
+4. Interpolate colors smoothly across the triangle
+
+The key insight is that we can process the triangle one horizontal row (scanline) at a time, filling pixels from left to right.
+
+
+Bresenham's Line Algorithm
+--------------------------
+Before we can fill the triangle, we need to know where its edges are. Bresenham's algorithm efficiently draws lines between two points using only integer arithmetic (no expensive floating-point operations or division).
+
+The algorithm works by calculating an error term that tracks how far the "ideal" line differs from the pixels we're actually drawing. When the error gets too large, we step in the perpendicular direction to stay close to the true line.
+
+I used the Wikipedia implementation, which handles all 8 octants (all possible line orientations). The algorithm returns a list of pixels along each edge, with colors linearly interpolated from the start vertex to the end vertex.
+
+
+The Scanline Algorithm
+----------------------
+This is the core of the triangle rasterization. The algorithm works as follows:
+
+Step 1: Sort vertices by Y coordinate
+We ensure v0 is the topmost vertex, v2 is the bottom, and v1 is in the middle.
+
+Step 2: Divide the triangle into two halves
+Every triangle can be split horizontally at the middle vertex into:
+- Top half: from v0 down to v1
+- Bottom half: from v1 down to v2
+
+Step 3: Process each scanline (horizontal row)
+For each Y coordinate from top to bottom:
+   a) Calculate where the current scanline intersects the triangle's edges
+   b) This gives us two X coordinates: the left and right boundaries
+   c) Fill all pixels horizontally between these boundaries
+
+Step 4: Track two edges at once
+For each scanline, we track:
+- The "long edge" from v0 to v2 (spans the entire triangle height)
+- The "short edge" that switches at the middle vertex:
+  * Top half: v0 to v1
+  * Bottom half: v1 to v2
+
+To find where each edge intersects the current scanline, we use linear interpolation based on how far down the edge we've traveled (parameter t, ranging from 0.0 to 1.0).
+
+
+Pseudocode
+----------
+function fillTriangle(v0, v1, v2):
+    // Step 1: Sort vertices by Y coordinate (top to bottom)
+    sort v0, v1, v2 such that v0.y <= v1.y <= v2.y
+    
+    // Step 2: Handle degenerate case
+    if v0.y == v2.y:
+        return  // Flat line, not a triangle
+    
+    // Step 3: Process each horizontal scanline
+    for y from v0.y to v2.y:
+        // Determine which half of triangle we're in
+        if y < v1.y:
+            // Top half: short edge is v0 → v1
+            v_start = v0
+            v_end = v1
+        else:
+            // Bottom half: short edge is v1 → v2
+            v_start = v1
+            v_end = v2
+        
+        // Calculate interpolation parameter for long edge (v0 → v2)
+        t_long = (y - v0.y) / (v2.y - v0.y)
+        x_long = v0.x + (v2.x - v0.x) * t_long
+        color_long = interpolate(v0.color, v2.color, t_long)
+        
+        // Calculate interpolation parameter for short edge
+        t_short = (y - v_start.y) / (v_end.y - v_start.y)
+        x_short = v_start.x + (v_end.x - v_start.x) * t_short
+        color_short = interpolate(v_start.color, v_end.color, t_short)
+        
+        // Determine left and right boundaries
+        if x_long < x_short:
+            x_left = x_long
+            x_right = x_short
+            color_left = color_long
+            color_right = color_short
+        else:
+            x_left = x_short
+            x_right = x_long
+            color_left = color_short
+            color_right = color_long
+        
+        // Fill horizontal span
+        for x from x_left to x_right:
+            t_span = (x - x_left) / (x_right - x_left)
+            color = interpolate(color_left, color_right, t_span)
+            setPixel(x, y, color)
+
+
+Color Interpolation
+-------------------
+Colors are interpolated at three levels:
+
+1. Along edges: As we trace from one vertex to another using Bresenham's algorithm, we blend the colors smoothly (e.g., from red at the top to green at the bottom-left).
+
+2. Along the long and short edges: For each scanline, we calculate the color where it intersects each edge.
+
+3. Across the scanline: We interpolate horizontally between the left and right edge colors to get the color for each pixel in between.
+
+Colors are stored as 32-bit integers in RGBA format (0xRRGGBBAA). To interpolate, we extract each color component (red, green, blue, alpha) using bit shifting and masking, interpolate them individually, then pack them back into a single 32-bit value.
+
+
+Screen Coordinates and Pixel Buffers
+------------------------------------
+The screen uses a coordinate system with the origin (0,0) at the top-left corner. X increases to the right, and Y increases downward. This is standard for raster graphics.
+
+SDL3 provides a window and rendering system, but the actual rasterization is done entirely by my code. I maintain a 1D array of pixels (width × height), where each pixel is a 32-bit color value. To access pixel (x, y), I use the formula:
+   index = y × width + x
+
+After filling the pixel buffer, SDL3 copies it to the texture and displays it.
+
+
+Edge Cases and Validation
+-------------------------
+The implementation handles several edge cases:
+
+- Collinear vertices: If all three vertices lie on a line, they don't form a valid triangle. The code checks for this using the cross product (area calculation).
+
+- Out-of-bounds vertices: Vertices can extend beyond the screen boundaries. The setPixel() function includes bounds checking to safely clip these triangles.
+
+- Flat triangles: If two vertices share the same Y coordinate, that creates a flat top or bottom. The algorithm skips scanlines where start and end Y are equal.
+
+- Zero-width spans: If left and right X coordinates are the same, we draw a single pixel rather than attempting to interpolate.
+
+
+Performance Considerations
+--------------------------
+This is a CPU-based implementation, meaning everything runs sequentially on a single processor core. Modern GPUs perform the same operations but in parallel across thousands of cores, making them orders of magnitude faster.
+
+The time complexity for filling a triangle is O(height × width) where height and width refer to the triangle's bounding box dimensions. Each pixel is visited exactly once.
+
+
+Conclusion
+----------
+The scanline algorithm is an elegant solution to triangle rasterization. By processing the triangle one row at a time and maintaining two edge intersections, we can efficiently fill triangles with smooth color gradients. While this CPU implementation is slower than GPU-based rendering, it provides clear insight into the fundamental algorithms that power all modern 3D graphics.
+
+The complete implementation can be found in scanline_rasterizer.cpp, which includes interactive features allowing users to input custom triangles and see the rasterization in real-time.

@@ -21,6 +21,7 @@
 
 /*
     How to Rasterize a Triangle: https://www.youtube.com/watch?v=t7Ztio8cwqM
+    Triangle Rasterization: https://www.youtube.com/watch?v=k5wtuKWmV48&t=931s
 */
 
 #include <iostream>
